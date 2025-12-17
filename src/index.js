@@ -27,7 +27,7 @@ const PORT = process.env.PORT || 3000;
 app.use(express.json());
 
 app.get("/", (req, res) => {
-    res.status(200).send("HTTP Server is running");
+    res.status(200).send("icl ts pmo fr fr u pmo");
 });
 
 const httpServer = http.createServer(app);
