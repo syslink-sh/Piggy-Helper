@@ -1,0 +1,205 @@
+const { Events, ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder, EmbedBuilder, ButtonBuilder, ButtonStyle, ChannelType, PermissionsBitField, MessageFlags } = require('discord.js');
+
+module.exports = {
+    name: Events.InteractionCreate,
+    async execute(interaction) {
+        try {
+
+            if (interaction.isChatInputCommand()) {
+                const command = interaction.client.commands.get(interaction.commandName);
+                if (!command) {
+                    console.error(`No command matching ${interaction.commandName} was found.`);
+                    return;
+                }
+                await command.execute(interaction);
+            }
+
+
+            else if (interaction.isButton()) {
+                const { customId } = interaction;
+                const LOG_CHANNEL_ID = process.env.LOG_CHANNEL_ID;
+                const CATEGORY_ID = process.env.CATEGORY_ID;
+
+                if (customId === 'request_help') {
+                    const modal = new ModalBuilder()
+                        .setCustomId('submit_request')
+                        .setTitle('Piggy Help Request');
+
+                    const skinInput = new TextInputBuilder()
+                        .setCustomId('piggy_skin')
+                        .setLabel('Piggy Skin')
+                        .setPlaceholder('Enter the piggy skin name')
+                        .setStyle(TextInputStyle.Short);
+
+                    const usernameInput = new TextInputBuilder()
+                        .setCustomId('roblox_username')
+                        .setLabel('Roblox Username')
+                        .setPlaceholder('Your Roblox Username')
+                        .setStyle(TextInputStyle.Short);
+
+                    const notesInput = new TextInputBuilder()
+                        .setCustomId('additional_notes')
+                        .setLabel('Additional Notes')
+                        .setStyle(TextInputStyle.Paragraph)
+                        .setRequired(false);
+
+                    const firstActionRow = new ActionRowBuilder().addComponents(skinInput);
+                    const secondActionRow = new ActionRowBuilder().addComponents(usernameInput);
+                    const thirdActionRow = new ActionRowBuilder().addComponents(notesInput);
+
+                    modal.addComponents(firstActionRow, secondActionRow, thirdActionRow);
+
+                    await interaction.showModal(modal);
+                }
+
+                else if (customId === 'accept_request') {
+                    const embed = interaction.message.embeds[0];
+                    const requesterId = embed.footer.text.replace('User ID: ', '');
+                    const requester = await interaction.guild.members.fetch(requesterId).catch(() => null);
+                    const username = requester ? requester.user.username : 'unknown';
+
+                    const channelName = `helprequest-${username}`;
+
+                    const topic = `User : ${username}\nHelper : ${interaction.user.username}\nID: ${requesterId}/${interaction.user.id}`;
+
+                    const channel = await interaction.guild.channels.create({
+                        name: channelName,
+                        type: ChannelType.GuildText,
+                        parent: CATEGORY_ID,
+                        topic: topic,
+                        permissionOverwrites: [
+                            {
+                                id: interaction.guild.id,
+                                deny: [PermissionsBitField.Flags.ViewChannel],
+                            },
+                            {
+                                id: requesterId,
+                                allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages],
+                            },
+                            {
+                                id: interaction.user.id,
+                                allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages],
+                            },
+                            {
+                                id: interaction.client.user.id,
+                                allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages, PermissionsBitField.Flags.ManageChannels],
+                            }
+                        ],
+                    });
+
+                    const welcomeEmbed = new EmbedBuilder()
+                        .setTitle('Help Request')
+                        .setColor('#FF69B4')
+                        .setDescription(`Welcome <@${requesterId}>. Your request has been accepted by <@${interaction.user.id}>.`)
+                        .addFields(
+                            { name: 'Piggy Skin', value: embed.fields[0].value, inline: true },
+                            { name: 'Roblox Username', value: embed.fields[1].value, inline: true },
+                            { name: 'Notes', value: embed.fields[2].value },
+                            { name: 'Status', value: 'In Progress', inline: true },
+                            { name: 'Accepted At', value: `<t:${Math.floor(Date.now() / 1000)}:F>`, inline: true }
+                        );
+
+                    await channel.send({ embeds: [welcomeEmbed] });
+                    await channel.send({ content: `<@${requesterId}> <@${interaction.user.id}>` });
+
+                    const acceptedEmbed = EmbedBuilder.from(embed)
+                        .setColor('Green')
+                        .setTitle('Request Accepted')
+                        .addFields({ name: 'Accepted By', value: `<@${interaction.user.id}>` });
+
+                    const disabledButtons = new ActionRowBuilder().addComponents(
+                        new ButtonBuilder().setCustomId('accept_request').setLabel('Accept').setStyle(ButtonStyle.Success).setDisabled(true),
+                        new ButtonBuilder().setCustomId('deny_request').setLabel('Deny').setStyle(ButtonStyle.Danger).setDisabled(true)
+                    );
+
+                    await interaction.update({ embeds: [acceptedEmbed], components: [disabledButtons] });
+                }
+
+                else if (customId === 'deny_request') {
+                    const embed = interaction.message.embeds[0];
+                    const deniedEmbed = EmbedBuilder.from(embed)
+                        .setColor('Red')
+                        .setTitle('Request Denied')
+                        .addFields({ name: 'Denied By', value: `<@${interaction.user.id}>` });
+
+                    const disabledButtons = new ActionRowBuilder().addComponents(
+                        new ButtonBuilder().setCustomId('accept_request').setLabel('Accept').setStyle(ButtonStyle.Success).setDisabled(true),
+                        new ButtonBuilder().setCustomId('deny_request').setLabel('Deny').setStyle(ButtonStyle.Danger).setDisabled(true)
+                    );
+
+                    await interaction.update({ embeds: [deniedEmbed], components: [disabledButtons] });
+                }
+
+                else if (customId === 'confirm_close') {
+                    const channel = interaction.channel;
+                    let requester = null;
+                    let helper = null;
+
+                    if (channel.topic && channel.topic.includes('ID:')) {
+                        const idLine = channel.topic.split('\n').find(line => line.startsWith('ID:'));
+                        if (idLine) {
+                            const ids = idLine.replace('ID: ', '').split('/');
+                            requester = ids[0];
+                            helper = ids[1];
+                        }
+                    }
+
+                    if (interaction.user.id !== requester && interaction.user.id !== helper) {
+                        return interaction.reply({ content: 'Only the Requester or Helper can confirm closing this ticket.', ephemeral: true });
+                    }
+
+
+                    await interaction.reply({ content: 'Closing the channel...', flags: [MessageFlags.Ephemeral] });
+                    await channel.delete();
+                }
+            }
+
+
+            else if (interaction.isModalSubmit()) {
+                if (interaction.customId === 'submit_request') {
+                    const REQUESTS_CHANNEL_ID = process.env.REQUESTS_CHANNEL_ID;
+                    const piggySkin = interaction.fields.getTextInputValue('piggy_skin');
+                    const robloxUser = interaction.fields.getTextInputValue('roblox_username');
+                    const notes = interaction.fields.getTextInputValue('additional_notes') || 'None';
+
+                    const requestsChannel = interaction.client.channels.cache.get(REQUESTS_CHANNEL_ID);
+                    if (requestsChannel) {
+                        const requestEmbed = new EmbedBuilder()
+                            .setTitle('New Help Request')
+                            .setColor('Yellow')
+                            .setDescription(`A new request has been submitted by <@${interaction.user.id}>.`)
+                            .addFields(
+                                { name: 'Piggy Skin', value: piggySkin, inline: true },
+                                { name: 'Roblox Username', value: robloxUser, inline: true },
+                                { name: 'Additional Notes', value: notes },
+                                { name: 'Status', value: 'Pending review', inline: true }
+                            )
+                            .setTimestamp()
+                            .setFooter({ text: `User ID: ${interaction.user.id}` });
+
+                        const row = new ActionRowBuilder().addComponents(
+                            new ButtonBuilder()
+                                .setCustomId('accept_request')
+                                .setLabel('Accept')
+                                .setStyle(ButtonStyle.Success),
+                            new ButtonBuilder()
+                                .setCustomId('deny_request')
+                                .setLabel('Deny')
+                                .setStyle(ButtonStyle.Danger),
+                        );
+
+                        await requestsChannel.send({ embeds: [requestEmbed], components: [row] });
+                    }
+
+                    await interaction.reply({ content: 'Request submitted successfully. It will be reviewed shortly.', flags: [MessageFlags.Ephemeral] });
+                }
+            }
+
+        } catch (error) {
+            console.error(error);
+            if (!interaction.replied && !interaction.deferred) {
+                await interaction.reply({ content: 'There was an error executing this interaction.', ephemeral: true });
+            }
+        }
+    },
+};
