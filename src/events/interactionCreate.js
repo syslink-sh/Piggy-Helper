@@ -43,11 +43,19 @@ module.exports = {
                         .setStyle(TextInputStyle.Paragraph)
                         .setRequired(false);
 
+                    const timezoneInput = new TextInputBuilder()
+                        .setCustomId('timezone')
+                        .setLabel('Timezone')
+                        .setPlaceholder('Putting your timezone can help the helpers to know your current time and improve your experience')
+                        .setStyle(TextInputStyle.Short)
+                        .setRequired(false);
+
                     const firstActionRow = new ActionRowBuilder().addComponents(skinInput);
                     const secondActionRow = new ActionRowBuilder().addComponents(usernameInput);
-                    const thirdActionRow = new ActionRowBuilder().addComponents(notesInput);
+                    const thirdActionRow = new ActionRowBuilder().addComponents(timezoneInput);
+                    const fourthActionRow = new ActionRowBuilder().addComponents(notesInput);
 
-                    modal.addComponents(firstActionRow, secondActionRow, thirdActionRow);
+                    modal.addComponents(firstActionRow, secondActionRow, thirdActionRow, fourthActionRow);
 
                     await interaction.showModal(modal);
                 }
@@ -87,16 +95,26 @@ module.exports = {
                         ],
                     });
 
+                    const timezoneField = embed.fields.find(f => f.name === 'Timezone');
+                    const timezone = timezoneField ? timezoneField.value : 'Not provided';
+                    const timestamp = Math.floor(Date.now() / 1000);
+
+                    const requesterDisplayName = requester ? (requester.user.globalName || requester.user.username) : 'unknown';
+                    const requesterDisplay = requester ? `${requesterDisplayName} (${requester.user.username})` : 'unknown';
+                    const helperDisplay = `${interaction.user.globalName || interaction.user.username} (${interaction.user.username})`;
+
                     const welcomeEmbed = new EmbedBuilder()
                         .setTitle('Help Request')
                         .setColor('#FF69B4')
-                        .setDescription(`Welcome <@${requesterId}>. Your request has been accepted by <@${interaction.user.id}>.`)
+                        .setDescription(`Welcome ${requesterDisplay}. Your request has been accepted by ${helperDisplay}.`)
                         .addFields(
                             { name: 'Piggy Skin', value: embed.fields[0].value, inline: true },
                             { name: 'Roblox Username', value: embed.fields[1].value, inline: true },
+                            { name: 'Timezone', value: timezone, inline: true },
+                            { name: 'Current Time', value: `<t:${timestamp}:F> (<t:${timestamp}:R>)`, inline: true },
                             { name: 'Notes', value: embed.fields[2].value },
                             { name: 'Status', value: 'In Progress', inline: true },
-                            { name: 'Accepted At', value: `<t:${Math.floor(Date.now() / 1000)}:F>`, inline: true }
+                            { name: 'Accepted At', value: `<t:${timestamp}:F>`, inline: true }
                         );
 
                     await channel.send({ embeds: [welcomeEmbed] });
@@ -105,7 +123,7 @@ module.exports = {
                     const acceptedEmbed = EmbedBuilder.from(embed)
                         .setColor('Green')
                         .setTitle('Request Accepted')
-                        .addFields({ name: 'Accepted By', value: `<@${interaction.user.id}>` });
+                        .addFields({ name: 'Accepted By', value: helperDisplay });
 
                     const disabledButtons = new ActionRowBuilder().addComponents(
                         new ButtonBuilder().setCustomId('accept_request').setLabel('Accept').setStyle(ButtonStyle.Success).setDisabled(true),
@@ -117,10 +135,11 @@ module.exports = {
 
                 else if (customId === 'deny_request') {
                     const embed = interaction.message.embeds[0];
+                    const helperDisplay = `${interaction.user.globalName || interaction.user.username} (${interaction.user.username})`;
                     const deniedEmbed = EmbedBuilder.from(embed)
                         .setColor('Red')
                         .setTitle('Request Denied')
-                        .addFields({ name: 'Denied By', value: `<@${interaction.user.id}>` });
+                        .addFields({ name: 'Denied By', value: helperDisplay });
 
                     const disabledButtons = new ActionRowBuilder().addComponents(
                         new ButtonBuilder().setCustomId('accept_request').setLabel('Accept').setStyle(ButtonStyle.Success).setDisabled(true),
@@ -161,16 +180,21 @@ module.exports = {
                     const piggySkin = interaction.fields.getTextInputValue('piggy_skin');
                     const robloxUser = interaction.fields.getTextInputValue('roblox_username');
                     const notes = interaction.fields.getTextInputValue('additional_notes') || 'None';
+                    const timezone = interaction.fields.getTextInputValue('timezone') || 'Not provided';
+                    const timestamp = Math.floor(Date.now() / 1000);
+                    const userDisplay = `${interaction.user.globalName || interaction.user.username} (${interaction.user.username})`;
 
                     const requestsChannel = interaction.client.channels.cache.get(REQUESTS_CHANNEL_ID);
                     if (requestsChannel) {
                         const requestEmbed = new EmbedBuilder()
                             .setTitle('New Help Request')
                             .setColor('Yellow')
-                            .setDescription(`A new request has been submitted by <@${interaction.user.id}>.`)
+                            .setDescription(`A new request has been submitted by ${userDisplay}.`)
                             .addFields(
                                 { name: 'Piggy Skin', value: piggySkin, inline: true },
                                 { name: 'Roblox Username', value: robloxUser, inline: true },
+                                { name: 'Timezone', value: timezone, inline: true },
+                                { name: 'Current Time', value: `<t:${timestamp}:F> (<t:${timestamp}:R>)`, inline: true },
                                 { name: 'Additional Notes', value: notes },
                                 { name: 'Status', value: 'Pending review', inline: true }
                             )
