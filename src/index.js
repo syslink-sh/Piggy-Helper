@@ -5,6 +5,7 @@ require('dotenv').config({ path: path.join(__dirname, '.env') });
 
 const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 client.commands = new Collection();
+client.helperAvailability = new Map();
 
 const modulesPath = path.join(__dirname, 'modules');
 const moduleFiles = fs.readdirSync(modulesPath).filter(file => file.endsWith('.js'));

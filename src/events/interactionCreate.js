@@ -1,5 +1,58 @@
 const { Events, ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder, EmbedBuilder, ButtonBuilder, ButtonStyle, ChannelType, PermissionsBitField, MessageFlags } = require('discord.js');
 
+function formatTimeInTimezone(timezone) {
+    if (!timezone || timezone === 'Not provided') return 'Not provided';
+    try {
+        const now = new Date();
+        const formatter = new Intl.DateTimeFormat('en-GB', {
+            hour: '2-digit',
+            minute: '2-digit',
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+            timeZone: timezone,
+            hour12: false
+        });
+        const parts = formatter.formatToParts(now);
+        const map = new Map(parts.map(p => [p.type, p.value]));
+        return `${map.get('hour')}:${map.get('minute')} (${map.get('day')}/${map.get('month')}/${map.get('year')})`;
+    } catch (e) {
+        return 'Timezone provided is invalid';
+    }
+}
+
+async function safeReply(interaction, options) {
+    try {
+        if (interaction.replied || interaction.deferred) {
+            await interaction.followUp(options);
+        } else {
+            await interaction.reply(options);
+        }
+    } catch (error) {
+        if (error.code === 10062) {
+            console.error('Interaction timed out or was already acknowledged.');
+        } else {
+            console.error('Error sending interaction reply:', error);
+        }
+    }
+}
+
+async function safeUpdate(interaction, options) {
+    try {
+        if (!interaction.replied && !interaction.deferred) {
+            await interaction.update(options);
+        } else {
+            await interaction.followUp(options);
+        }
+    } catch (error) {
+        if (error.code === 10062) {
+            console.error('Interaction timed out or was already acknowledged.');
+        } else {
+            console.error('Error updating interaction:', error);
+        }
+    }
+}
+
 module.exports = {
     name: Events.InteractionCreate,
     async execute(interaction) {
@@ -46,7 +99,7 @@ module.exports = {
                     const timezoneInput = new TextInputBuilder()
                         .setCustomId('timezone')
                         .setLabel('Timezone')
-                        .setPlaceholder('Putting your timezone can help the helpers to know your current time and improve your experience')
+                        .setPlaceholder('e.g. Asia/Riyadh, EST, UTC+3')
                         .setStyle(TextInputStyle.Short)
                         .setRequired(false);
 
@@ -57,7 +110,7 @@ module.exports = {
 
                     modal.addComponents(firstActionRow, secondActionRow, thirdActionRow, fourthActionRow);
 
-                    await interaction.showModal(modal);
+                    await interaction.showModal(modal).catch(e => console.error('Error showing modal:', e));
                 }
 
                 else if (customId === 'accept_request') {
@@ -111,7 +164,7 @@ module.exports = {
                             { name: 'Piggy Skin', value: embed.fields[0].value, inline: true },
                             { name: 'Roblox Username', value: embed.fields[1].value, inline: true },
                             { name: 'Timezone', value: timezone, inline: true },
-                            { name: 'Current Time', value: `<t:${timestamp}:F> (<t:${timestamp}:R>)`, inline: true },
+                            { name: 'Time for user when sent', value: formatTimeInTimezone(timezone), inline: true },
                             { name: 'Notes', value: embed.fields[2].value },
                             { name: 'Status', value: 'In Progress', inline: true },
                             { name: 'Accepted At', value: `<t:${timestamp}:F>`, inline: true }
@@ -130,7 +183,7 @@ module.exports = {
                         new ButtonBuilder().setCustomId('deny_request').setLabel('Deny').setStyle(ButtonStyle.Danger).setDisabled(true)
                     );
 
-                    await interaction.update({ embeds: [acceptedEmbed], components: [disabledButtons] });
+                    await safeUpdate(interaction, { embeds: [acceptedEmbed], components: [disabledButtons] });
                 }
 
                 else if (customId === 'deny_request') {
@@ -146,7 +199,7 @@ module.exports = {
                         new ButtonBuilder().setCustomId('deny_request').setLabel('Deny').setStyle(ButtonStyle.Danger).setDisabled(true)
                     );
 
-                    await interaction.update({ embeds: [deniedEmbed], components: [disabledButtons] });
+                    await safeUpdate(interaction, { embeds: [deniedEmbed], components: [disabledButtons] });
                 }
 
                 else if (customId === 'confirm_close') {
@@ -164,11 +217,11 @@ module.exports = {
                     }
 
                     if (interaction.user.id !== requester && interaction.user.id !== helper) {
-                        return interaction.reply({ content: 'Only the Requester or Helper can confirm closing this ticket.', ephemeral: true });
+                        return safeReply(interaction, { content: 'Only the Requester or Helper can confirm closing this ticket.', flags: [MessageFlags.Ephemeral] });
                     }
 
 
-                    await interaction.reply({ content: 'Closing the channel...', flags: [MessageFlags.Ephemeral] });
+                    await safeReply(interaction, { content: 'Closing the channel...', flags: [MessageFlags.Ephemeral] });
                     await channel.delete();
                 }
             }
@@ -194,7 +247,7 @@ module.exports = {
                                 { name: 'Piggy Skin', value: piggySkin, inline: true },
                                 { name: 'Roblox Username', value: robloxUser, inline: true },
                                 { name: 'Timezone', value: timezone, inline: true },
-                                { name: 'Current Time', value: `<t:${timestamp}:F> (<t:${timestamp}:R>)`, inline: true },
+                                { name: 'Time for user when sent', value: formatTimeInTimezone(timezone), inline: true },
                                 { name: 'Additional Notes', value: notes },
                                 { name: 'Status', value: 'Pending review', inline: true }
                             )
@@ -215,14 +268,14 @@ module.exports = {
                         await requestsChannel.send({ embeds: [requestEmbed], components: [row] });
                     }
 
-                    await interaction.reply({ content: 'Request submitted successfully. It will be reviewed shortly.', flags: [MessageFlags.Ephemeral] });
+                    await safeReply(interaction, { content: 'Request submitted successfully. It will be reviewed shortly.', flags: [MessageFlags.Ephemeral] });
                 }
             }
 
         } catch (error) {
             console.error(error);
             if (!interaction.replied && !interaction.deferred) {
-                await interaction.reply({ content: 'There was an error executing this interaction.', ephemeral: true });
+                await safeReply(interaction, { content: 'There was an error executing this interaction.', flags: [MessageFlags.Ephemeral] });
             }
         }
     },
