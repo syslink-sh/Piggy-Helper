@@ -2,12 +2,12 @@ const { Client, Collection, GatewayIntentBits } = require('discord.js');
 const fs = require('node:fs');
 const path = require('node:path');
 console.log('--- Startup Debug ---');
-const envPath = path.join(__dirname, '.env');
+const envPath = '/etc/secrets/.env';
 console.log(`Checking .env at: ${envPath}`);
 if (fs.existsSync(envPath)) {
     console.log(`.env file exists. Size: ${fs.statSync(envPath).size} bytes`);
 } else {
-    console.log('.env file NOT found in src/ directory!');
+    console.log('.env file NOT found at /etc/secrets/.env!');
 }
 
 const result = require('dotenv').config({ path: envPath, override: true });
