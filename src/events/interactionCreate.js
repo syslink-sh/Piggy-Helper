@@ -56,19 +56,9 @@ async function safeUpdate(interaction, options) {
 module.exports = {
     name: Events.InteractionCreate,
     async execute(interaction) {
+        const startTime = Date.now();
         try {
-
-            if (interaction.isChatInputCommand()) {
-                const command = interaction.client.commands.get(interaction.commandName);
-                if (!command) {
-                    console.error(`No command matching ${interaction.commandName} was found.`);
-                    return;
-                }
-                await command.execute(interaction);
-            }
-
-
-            else if (interaction.isButton()) {
+            if (interaction.isButton()) {
                 const { customId } = interaction;
                 const LOG_CHANNEL_ID = process.env.LOG_CHANNEL_ID;
                 const CATEGORY_ID = process.env.CATEGORY_ID;
@@ -114,13 +104,14 @@ module.exports = {
                 }
 
                 else if (customId === 'accept_request') {
+                    await interaction.deferUpdate().catch(() => null);
+
                     const embed = interaction.message.embeds[0];
                     const requesterId = embed.footer.text.replace('User ID: ', '');
                     const requester = await interaction.guild.members.fetch(requesterId).catch(() => null);
                     const username = requester ? requester.user.username : 'unknown';
 
                     const channelName = `helprequest-${username}`;
-
                     const topic = `User : ${username}\nHelper : ${interaction.user.username}\nID: ${requesterId}/${interaction.user.id}`;
 
                     const channel = await interaction.guild.channels.create({
@@ -187,6 +178,8 @@ module.exports = {
                 }
 
                 else if (customId === 'deny_request') {
+                    await interaction.deferUpdate().catch(() => null);
+
                     const embed = interaction.message.embeds[0];
                     const helperDisplay = `${interaction.user.globalName || interaction.user.username} (${interaction.user.username})`;
                     const deniedEmbed = EmbedBuilder.from(embed)
@@ -220,12 +213,10 @@ module.exports = {
                         return safeReply(interaction, { content: 'Only the Requester or Helper can confirm closing this ticket.', flags: [MessageFlags.Ephemeral] });
                     }
 
-
-                    await safeReply(interaction, { content: 'Closing the channel...', flags: [MessageFlags.Ephemeral] });
-                    await channel.delete();
+                    await interaction.deferUpdate().catch(() => null);
+                    await channel.delete().catch(() => null);
                 }
             }
-
 
             else if (interaction.isModalSubmit()) {
                 if (interaction.customId === 'submit_request') {
@@ -272,10 +263,24 @@ module.exports = {
                 }
             }
 
+            else if (interaction.isChatInputCommand()) {
+                const command = interaction.client.commands.get(interaction.commandName);
+                if (!command) {
+                    console.error(`No command matching ${interaction.commandName} was found.`);
+                    return;
+                }
+                await command.execute(interaction);
+            }
+
         } catch (error) {
-            console.error(error);
+            console.error('Interaction Error:', error);
             if (!interaction.replied && !interaction.deferred) {
                 await safeReply(interaction, { content: 'There was an error executing this interaction.', flags: [MessageFlags.Ephemeral] });
+            }
+        } finally {
+            const duration = Date.now() - startTime;
+            if (duration > 2000) {
+                console.warn(`[PERF] Interaction ${interaction.id} took ${duration}ms to process!`);
             }
         }
     },

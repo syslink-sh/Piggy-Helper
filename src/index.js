@@ -2,28 +2,43 @@ const { Client, Collection, GatewayIntentBits } = require('discord.js');
 const fs = require('node:fs');
 const path = require('node:path');
 console.log('--- Startup Debug ---');
-const envPath = '/etc/secrets/.env';
-console.log(`Checking .env at: ${envPath}`);
-if (fs.existsSync(envPath)) {
-    console.log(`.env file exists. Size: ${fs.statSync(envPath).size} bytes`);
-} else {
-    console.log('.env file NOT found at /etc/secrets/.env!');
+const paths = [
+    path.join(__dirname, '.env'),
+    '/etc/secrets/.env'
+];
+
+let envPath = null;
+for (const p of paths) {
+    console.log(`Checking for .env at: ${p}`);
+    if (fs.existsSync(p)) {
+        envPath = p;
+        console.log(`Found .env at: ${envPath} (${fs.statSync(envPath).size} bytes)`);
+        break;
+    }
+}
+
+if (!envPath) {
+    console.error('CRITICAL ERROR: .env file not found in any of the following locations:');
+    paths.forEach(p => console.error(` - ${p}`));
+    console.error('Please ensure the .env file exists and the bot has permission to read it.');
+    process.exit(1);
 }
 
 const result = require('dotenv').config({ path: envPath, override: true });
 if (result.error) {
     console.error('Dotenv Error:', result.error);
+    process.exit(1);
 }
 
-console.log('Environment variables loaded:');
+console.log('Environment variables loaded successfully.');
 const token = process.env.DISCORD_TOKEN;
 console.log(`- DISCORD_TOKEN present: ${!!token}`);
-if (token) {
+if (token && token.length > 8) {
     console.log(`- DISCORD_TOKEN format: ${token.substring(0, 4)}...${token.substring(token.length - 4)}`);
 }
 console.log(`- DISCORD_CLIENT_ID present: ${!!process.env.DISCORD_CLIENT_ID}`);
 console.log(`- DISCORD_GUILD_ID present: ${!!process.env.DISCORD_GUILD_ID}`);
-console.log(`- PORT: ${process.env.PORT}`);
+console.log(`- PORT: ${process.env.PORT || 'using default 3000'}`);
 console.log('---------------------');
 
 const client = new Client({ intents: [GatewayIntentBits.Guilds] });
