@@ -28,8 +28,6 @@ module.exports = {
     // Role IDs
     helperRoleId: (process.env.HELPER_ROLE_ID || '').trim(),
 
-    // Server Configuration
-    port: process.env.PORT || 3000,
 
     /**
      * Helper to validate that all required variables are present.
@@ -47,7 +45,6 @@ module.exports = {
         console.log(`- Token: ${this.token ? 'Loaded (✓)' : 'MISSING (✗)'}`);
         console.log(`- Client ID: ${this.clientId ? 'Loaded (✓)' : 'MISSING (✗)'}`);
         console.log(`- Guild ID: ${this.guildId ? 'Loaded (✓)' : 'MISSING (✗)'}`);
-        console.log(`- Port: ${this.port}`);
         console.log('-------------------------');
     }
 };
