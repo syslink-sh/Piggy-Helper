@@ -1,4 +1,5 @@
 const { Events, ActivityType } = require('discord.js');
+const config = require('../config');
 
 module.exports = {
     name: Events.ClientReady,
@@ -8,14 +9,13 @@ module.exports = {
 
         client.user.setActivity('Helping People !', { type: ActivityType.Playing });
 
-        const GUILD_ID = process.env.DISCORD_GUILD_ID;
-        if (!GUILD_ID) {
-            console.warn('DISCORD_GUILD_ID is not defined in .env. Guild locking is disabled.');
+        if (!config.guildId) {
+            console.warn('DISCORD_GUILD_ID is not defined. Guild locking is disabled.');
             return;
         }
 
         client.guilds.cache.forEach(guild => {
-            if (guild.id !== GUILD_ID) {
+            if (guild.id !== config.guildId) {
                 console.log(`Leaving unauthorized guild: ${guild.name} (${guild.id})`);
                 guild.leave().catch(err => console.error(`Failed to leave guild ${guild.id}:`, err));
             }

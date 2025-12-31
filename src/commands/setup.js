@@ -23,6 +23,9 @@ module.exports = {
         const row = new ActionRowBuilder().addComponents(setupButton);
 
         await channel.send({ embeds: [embed], components: [row] });
-        await interaction.reply({ content: 'Help panel deployed successfully.', flags: [MessageFlags.Ephemeral] });
+        await interaction.reply({
+            content: 'Help panel deployed successfully.',
+            flags: [MessageFlags.Ephemeral]
+        });
     },
 };

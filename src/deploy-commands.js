@@ -1,49 +1,17 @@
 const fs = require('node:fs');
 const path = require('node:path');
-
-console.log('--- Deployment Debug ---');
-const paths = [
-    path.join(__dirname, '.env'),
-    '/etc/secrets/.env'
-];
-
-let envPath = null;
-for (const p of paths) {
-    console.log(`Checking for .env at: ${p}`);
-    if (fs.existsSync(p)) {
-        envPath = p;
-        console.log(`Found .env at: ${envPath} (${fs.statSync(envPath).size} bytes)`);
-        break;
-    }
-}
-
-if (!envPath) {
-    console.error('CRITICAL ERROR: .env file not found in any of the following locations:');
-    paths.forEach(p => console.error(` - ${p}`));
-    process.exit(1);
-}
-
-require('dotenv').config({ path: envPath, override: true });
+const config = require('./config');
 const { REST, Routes } = require('discord.js');
 
-console.log('Environment variables loaded:');
-const token = (process.env.DISCORD_TOKEN || '').trim();
-const clientId = (process.env.DISCORD_CLIENT_ID || '').trim();
-const guildId = (process.env.DISCORD_GUILD_ID || '').trim();
-
-console.log(`- DISCORD_TOKEN present: ${!!token}`);
-if (token && token.length > 8) {
-    console.log(`- DISCORD_TOKEN format: "${token.substring(0, 4)}...${token.substring(token.length - 4)}" (Length: ${token.length})`);
-    if (token.includes(' ')) console.log('[WARNING] Token contains internal spaces!');
-}
-console.log(`- DISCORD_CLIENT_ID: "${clientId}"`);
-console.log(`- DISCORD_GUILD_ID: "${guildId}"`);
-console.log('-------------------------');
-
-if (!token) {
-    console.error('CRITICAL ERROR: DISCORD_TOKEN is missing or empty after trimming.');
+if (!config.isValid()) {
+    config.logStatus();
+    console.error('CRITICAL ERROR: Missing required environment variables. Deployment aborted.');
     process.exit(1);
 }
+
+config.logStatus();
+
+const { token, clientId, guildId } = config;
 
 const commands = [];
 const commandsPath = path.join(__dirname, 'commands');
