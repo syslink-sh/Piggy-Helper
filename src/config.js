@@ -1,8 +1,14 @@
 const path = require('node:path');
 const dotenv = require('dotenv');
 
-// Load environment variables from .env file in the root directory
-dotenv.config();
+// Load environment variables from .env file (check root and src)
+const envPaths = [path.join(__dirname, '..', '.env'), path.join(__dirname, '.env')];
+for (const envPath of envPaths) {
+    if (require('node:fs').existsSync(envPath)) {
+        dotenv.config({ path: envPath });
+        break;
+    }
+}
 
 /**
  * Centralized configuration and environment variable management.
@@ -11,8 +17,8 @@ dotenv.config();
 module.exports = {
     // Core Discord Configuration
     token: (process.env.DISCORD_TOKEN || '').trim(),
-    clientId: (process.env.DISCORD_CLIENT_ID || '').trim(),
-    guildId: (process.env.DISCORD_GUILD_ID || '').trim(),
+    clientId: (process.env.CLIENT_ID || '').trim(),
+    guildId: (process.env.GUILD_ID || '').trim(),
 
     // Channel and Category IDs
     requestsChannelId: (process.env.REQUESTS_CHANNEL_ID || '').trim(),
@@ -20,7 +26,7 @@ module.exports = {
     logChannelId: (process.env.LOG_CHANNEL_ID || '').trim(),
 
     // Role IDs
-    helperRoleId: (process.env.HELPERROLE || '').trim(),
+    helperRoleId: (process.env.HELPER_ROLE_ID || '').trim(),
 
     // Server Configuration
     port: process.env.PORT || 3000,

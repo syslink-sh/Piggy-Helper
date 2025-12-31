@@ -62,7 +62,7 @@ async function safeUpdate(interaction, options) {
         if (!interaction.replied && !interaction.deferred) {
             await interaction.update(options);
         } else {
-            await interaction.followUp(options);
+            await interaction.editReply(options);
         }
     } catch (error) {
         if (error.code !== 10062) console.error('Error updating interaction:', error);
@@ -92,9 +92,9 @@ async function handleRequestHelp(interaction) {
     const timezoneInput = new TextInputBuilder()
         .setCustomId('timezone')
         .setLabel('Timezone')
-        .setPlaceholder('e.g. Asia/Riyadh, EST, UTC+3')
+        .setPlaceholder('e.g. EST, UTC+3')
         .setStyle(TextInputStyle.Short)
-        .setRequired(false);
+        .setRequired(true);
 
     const notesInput = new TextInputBuilder()
         .setCustomId('additional_notes')
@@ -119,9 +119,10 @@ async function handleRequestHelp(interaction) {
  * Logic for when a helper accepts a request.
  */
 async function handleAcceptRequest(interaction) {
-    await interaction.deferUpdate().catch(() => null);
-
     const embed = interaction.message.embeds[0];
+    if (embed.title !== 'New Help Request') return;
+
+    await interaction.deferUpdate().catch(() => null);
     const requesterId = embed.footer.text.replace('User ID: ', '');
     const requester = await interaction.guild.members.fetch(requesterId).catch(() => null);
     const username = requester ? requester.user.username : 'unknown';
@@ -180,9 +181,10 @@ async function handleAcceptRequest(interaction) {
  * Logic for when a helper denies a request.
  */
 async function handleDenyRequest(interaction) {
-    await interaction.deferUpdate().catch(() => null);
-
     const embed = interaction.message.embeds[0];
+    if (embed.title !== 'New Help Request') return;
+
+    await interaction.deferUpdate().catch(() => null);
     const helperDisplay = `${interaction.user.globalName || interaction.user.username} (${interaction.user.username})`;
     const deniedEmbed = EmbedBuilder.from(embed)
         .setColor('Red')
