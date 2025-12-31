@@ -29,21 +29,3 @@ client.login(process.env.DISCORD_TOKEN).catch(err => {
     console.error('Failed to login to Discord:');
     console.error(err);
 });
-
-const express = require("express");
-const http = require("http");
-
-const app = express();
-const PORT = process.env.PORT || 3000;
-
-app.use(express.json());
-
-app.get("/", (req, res) => {
-    res.status(200).send("icl ts pmo fr fr u pmo");
-});
-
-const httpServer = http.createServer(app);
-
-httpServer.listen(PORT, () => {
-    console.log(`HTTP Server started on port ${PORT}`);
-});
