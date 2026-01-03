@@ -1,6 +1,10 @@
 const { Pool } = require('pg');
 const config = require('../config');
 
+if (!config.postgresUrl) {
+    console.error('CRITICAL ERROR: POSTGRES_URL is not defined in your .env file!');
+}
+
 const pool = new Pool({
     connectionString: config.postgresUrl,
 });

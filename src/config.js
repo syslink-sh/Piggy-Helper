@@ -5,8 +5,7 @@ const dotenv = require('dotenv');
 const envPaths = [path.join(__dirname, '..', '.env'), path.join(__dirname, '.env')];
 for (const envPath of envPaths) {
     if (require('node:fs').existsSync(envPath)) {
-        dotenv.config({ path: envPath });
-        break;
+        dotenv.config({ path: envPath, override: true });
     }
 }
 
@@ -48,6 +47,7 @@ module.exports = {
         console.log(`- Token: ${this.token ? 'Loaded (✓)' : 'MISSING (✗)'}`);
         console.log(`- Client ID: ${this.clientId ? 'Loaded (✓)' : 'MISSING (✗)'}`);
         console.log(`- Guild ID: ${this.guildId ? 'Loaded (✓)' : 'MISSING (✗)'}`);
+        console.log(`- Postgres URL: ${this.postgresUrl ? 'Loaded (✓)' : 'MISSING (✗)'}`);
         console.log('-------------------------');
     }
 };
