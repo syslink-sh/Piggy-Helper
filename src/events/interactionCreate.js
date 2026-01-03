@@ -40,13 +40,12 @@ function formatTimeInTimezone(timezone) {
     }
 }
 
-/**
- * Safely replies to an interaction, handling timeout errors and already replied states.
- */
 async function safeReply(interaction, options) {
     try {
-        if (interaction.replied || interaction.deferred) {
+        if (interaction.replied) {
             await interaction.followUp(options);
+        } else if (interaction.deferred) {
+            await interaction.editReply(options);
         } else {
             await interaction.reply(options);
         }
