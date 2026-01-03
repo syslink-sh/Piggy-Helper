@@ -20,16 +20,17 @@ module.exports = {
             .setTimestamp();
 
         let helperList = '';
-        for (const [id] of availableHelpers) {
-            try {
-                const member = await interaction.guild.members.fetch(id).catch(() => null);
-                if (member) {
-                    const displayName = member.user.globalName || member.user.username;
-                    helperList += `• ${displayName} (${member.user.username})\n`;
-                }
-            } catch (error) {
-                console.error(`Could not fetch user ${id}:`, error);
+        try {
+            const helperIds = availableHelpers.map(([id]) => id);
+            const members = await interaction.guild.members.fetch({ user: helperIds });
+
+            for (const [id, member] of members) {
+                const displayName = member.user.globalName || member.user.username;
+                helperList += `• ${displayName} (${member.user.username})\n`;
             }
+        } catch (error) {
+            console.error('Error batch fetching helpers:', error);
+            helperList = 'Error loading helpers list.';
         }
 
         embed.setDescription(helperList || 'No helpers are currently available.');

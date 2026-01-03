@@ -142,15 +142,11 @@ async function handleAcceptRequest(interaction) {
         ],
     });
 
-    // Update the request in the database
-    try {
-        await db.run(
-            'UPDATE requests SET status = $1, accepted_by = $2, accepted_at = CURRENT_TIMESTAMP WHERE user_id = $3 AND status = $4',
-            ['accepted', interaction.user.id, requesterId, 'pending']
-        );
-    } catch (err) {
-        console.error('Failed to log request acceptance to database:', err);
-    }
+    // Update the request in the database (backgrounded for speed)
+    db.run(
+        'UPDATE requests SET status = $1, accepted_by = $2, accepted_at = CURRENT_TIMESTAMP WHERE user_id = $3 AND status = $4',
+        ['accepted', interaction.user.id, requesterId, 'pending']
+    ).catch(err => console.error('Failed to log request acceptance to database:', err));
 
     const timezone = embed.fields.find(f => f.name === 'Timezone')?.value || 'Not provided';
     const timestamp = Math.floor(Date.now() / 1000);
@@ -204,16 +200,11 @@ async function handleDenyRequest(interaction) {
         new ButtonBuilder().setCustomId('deny_request').setLabel('Denied').setStyle(ButtonStyle.Danger).setDisabled(true)
     );
 
-    // Update the request in the database
-    const requesterId = embed.footer.text.replace('User ID: ', '');
-    try {
-        await db.run(
-            'UPDATE requests SET status = $1 WHERE user_id = $2 AND status = $3',
-            ['denied', requesterId, 'pending']
-        );
-    } catch (err) {
-        console.error('Failed to log request denial to database:', err);
-    }
+    // Update the request in the database (backgrounded for speed)
+    db.run(
+        'UPDATE requests SET status = $1 WHERE user_id = $2 AND status = $3',
+        ['denied', requesterId, 'pending']
+    ).catch(err => console.error('Failed to log request denial to database:', err));
 
     await safeUpdate(interaction, { embeds: [deniedEmbed], components: [disabledButtons] });
 }
@@ -254,24 +245,20 @@ async function handleSubmitRequest(interaction) {
         new ButtonBuilder().setCustomId('deny_request').setLabel('Deny').setStyle(ButtonStyle.Danger)
     );
 
-    // Initial Request Log to Database
-    try {
-        await db.run(
-            'INSERT INTO requests (user_id, display_name, username, piggy_skin, roblox_username, timezone, notes, status) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)',
-            [
-                interaction.user.id,
-                interaction.user.globalName || interaction.user.username,
-                interaction.user.username,
-                piggySkin,
-                robloxUser,
-                timezone,
-                notes,
-                'pending'
-            ]
-        );
-    } catch (err) {
-        console.error('Failed to log request submission to database:', err);
-    }
+    // Initial Request Log to Database (backgrounded for speed)
+    db.run(
+        'INSERT INTO requests (user_id, display_name, username, piggy_skin, roblox_username, timezone, notes, status) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)',
+        [
+            interaction.user.id,
+            interaction.user.globalName || interaction.user.username,
+            interaction.user.username,
+            piggySkin,
+            robloxUser,
+            timezone,
+            notes,
+            'pending'
+        ]
+    ).catch(err => console.error('Failed to log request submission to database:', err));
 
     await requestsChannel.send({ embeds: [requestEmbed], components: [row] });
     await safeReply(interaction, { content: 'Request submitted successfully! Staff will review it soon.', flags: [MessageFlags.Ephemeral] });
@@ -310,16 +297,12 @@ module.exports = {
                         });
                     }
 
-                    // Update the request in the database to 'closed'
+                    // Update the request in the database to 'closed' (backgrounded for speed)
                     if (requester) {
-                        try {
-                            await db.run(
-                                'UPDATE requests SET status = $1 WHERE user_id = $2 AND status = $3',
-                                ['closed', requester, 'accepted']
-                            );
-                        } catch (err) {
-                            console.error('Failed to log request closure to database:', err);
-                        }
+                        db.run(
+                            'UPDATE requests SET status = $1 WHERE user_id = $2 AND status = $3',
+                            ['closed', requester, 'accepted']
+                        ).catch(err => console.error('Failed to log request closure to database:', err));
                     }
 
                     await channel.delete().catch(() => null);
