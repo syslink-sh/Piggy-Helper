@@ -119,12 +119,13 @@ async function handleRequestHelp(interaction) {
  * Logic for when a helper accepts a request.
  */
 async function handleAcceptRequest(interaction) {
-    await interaction.deferUpdate().catch(() => null);
+    const t_start = Date.now();
     const embed = interaction.message.embeds[0];
     if (embed.title !== 'New Help Request') return;
     const requesterId = embed.footer.text.replace('User ID: ', '');
     const requester = await interaction.guild.members.fetch(requesterId).catch(() => null);
     const username = requester ? requester.user.username : 'unknown';
+    console.log(`[PROFILE] handleAcceptRequest Fetch: ${Date.now() - t_start}ms`);
 
     const channelName = `helprequest-${username}`;
     const topic = `User : ${username}\nHelper : ${interaction.user.username}\nID: ${requesterId}/${interaction.user.id}`;
@@ -186,7 +187,6 @@ async function handleAcceptRequest(interaction) {
 }
 
 async function handleDenyRequest(interaction) {
-    await interaction.deferUpdate().catch(() => null);
     const embed = interaction.message.embeds[0];
     if (embed.title !== 'New Help Request') return;
 
@@ -216,7 +216,7 @@ async function handleDenyRequest(interaction) {
  * Logic for when a request is submitted via modal.
  */
 async function handleSubmitRequest(interaction) {
-    await interaction.deferReply({ flags: [MessageFlags.Ephemeral] }).catch(() => null);
+    const t_start = Date.now();
     const piggySkin = interaction.fields.getTextInputValue('piggy_skin');
     const robloxUser = interaction.fields.getTextInputValue('roblox_username');
     const notes = interaction.fields.getTextInputValue('additional_notes') || 'None';
@@ -224,6 +224,8 @@ async function handleSubmitRequest(interaction) {
     const userDisplay = `${interaction.user.globalName || interaction.user.username} (${interaction.user.username})`;
 
     const requestsChannel = interaction.client.channels.cache.get(config.requestsChannelId);
+    console.log(`[PROFILE] handleSubmitRequest Setup: ${Date.now() - t_start}ms`);
+
     if (!requestsChannel) {
         return safeReply(interaction, { content: 'Error: Requests channel not found. Please contact staff.', flags: [MessageFlags.Ephemeral] });
     }
@@ -263,8 +265,11 @@ async function handleSubmitRequest(interaction) {
         ]
     ).catch(err => console.error('Failed to log request submission to database:', err));
 
+    console.log(`[PROFILE] handleSubmitRequest Logic+DB: ${Date.now() - t_start}ms`);
+
     // Acknowledge the user immediately
     await safeReply(interaction, { content: 'Request submitted successfully! Staff will review it soon.', flags: [MessageFlags.Ephemeral] });
+    console.log(`[PROFILE] handleSubmitRequest Final Reply: ${Date.now() - t_start}ms`);
 
     // Send the request to the staff channel in the background
     requestsChannel.send({ embeds: [requestEmbed], components: [row] })
@@ -276,14 +281,20 @@ module.exports = {
     async execute(interaction) {
         const startTime = Date.now();
         try {
-            // Priority 1: Buttons (Fastest interaction)
+            // Priority 1: Buttons
             if (interaction.isButton()) {
                 const { customId } = interaction;
+
+                // DEFER EVERYTHING IMMEDIATELY (Unless it's the modal trigger)
+                if (customId !== 'request_help') {
+                    await interaction.deferUpdate().catch(() => null);
+                    console.log(`[PROFILE] Button ${customId} Deferral: ${Date.now() - startTime}ms`);
+                }
+
                 if (customId === 'request_help') await handleRequestHelp(interaction);
                 else if (customId === 'accept_request') await handleAcceptRequest(interaction);
                 else if (customId === 'deny_request') await handleDenyRequest(interaction);
                 else if (customId === 'confirm_close') {
-                    await interaction.deferUpdate().catch(() => null);
                     const channel = interaction.channel;
                     let requester = null;
                     let helper = null;
@@ -318,11 +329,19 @@ module.exports = {
 
             // Priority 2: Modals
             else if (interaction.isModalSubmit()) {
+                // DEFER MODAL IMMEDIATELY
+                await interaction.deferReply({ flags: [MessageFlags.Ephemeral] }).catch(() => null);
+                console.log(`[PROFILE] Modal ${interaction.customId} Deferral: ${Date.now() - startTime}ms`);
+
                 if (interaction.customId === 'submit_request') await handleSubmitRequest(interaction);
             }
 
             // Priority 3: Commands
             else if (interaction.isChatInputCommand()) {
+                // DEFER COMMAND IMMEDIATELY
+                await interaction.deferReply({ flags: [MessageFlags.Ephemeral] }).catch(() => null);
+                console.log(`[PROFILE] Command ${interaction.commandName} Deferral: ${Date.now() - startTime}ms`);
+
                 const command = interaction.client.commands.get(interaction.commandName);
                 if (command) await command.execute(interaction);
             }
