@@ -167,8 +167,6 @@ async function handleAcceptRequest(interaction) {
             { name: 'Accepted At', value: `<t:${timestamp}:F>`, inline: true }
         );
 
-    await channel.send({ content: `<@${requesterId}> <@${interaction.user.id}>`, embeds: [welcomeEmbed] });
-
     const acceptedEmbed = EmbedBuilder.from(embed)
         .setColor('Green')
         .setTitle('Request Accepted')
@@ -179,17 +177,22 @@ async function handleAcceptRequest(interaction) {
         new ButtonBuilder().setCustomId('deny_request').setLabel('Deny').setStyle(ButtonStyle.Danger).setDisabled(true)
     );
 
-    await safeUpdate(interaction, { embeds: [acceptedEmbed], components: [disabledButtons] });
+    // Response to the helper immediately (backgrounded channel notification)
+    safeUpdate(interaction, { embeds: [acceptedEmbed], components: [disabledButtons] });
+
+    // Send welcome message in the new channel (backgrounded)
+    channel.send({ content: `<@${requesterId}> <@${interaction.user.id}>`, embeds: [welcomeEmbed] })
+        .catch(err => console.error('Failed to send welcome message:', err));
 }
 
-/**
- * Logic for when a helper denies a request.
- */
 async function handleDenyRequest(interaction) {
     await interaction.deferUpdate().catch(() => null);
     const embed = interaction.message.embeds[0];
     if (embed.title !== 'New Help Request') return;
+
     const helperDisplay = `${interaction.user.globalName || interaction.user.username} (${interaction.user.username})`;
+    const requesterId = embed.footer.text.replace('User ID: ', '');
+
     const deniedEmbed = EmbedBuilder.from(embed)
         .setColor('Red')
         .setTitle('Request Denied')
@@ -260,8 +263,12 @@ async function handleSubmitRequest(interaction) {
         ]
     ).catch(err => console.error('Failed to log request submission to database:', err));
 
-    await requestsChannel.send({ embeds: [requestEmbed], components: [row] });
+    // Acknowledge the user immediately
     await safeReply(interaction, { content: 'Request submitted successfully! Staff will review it soon.', flags: [MessageFlags.Ephemeral] });
+
+    // Send the request to the staff channel in the background
+    requestsChannel.send({ embeds: [requestEmbed], components: [row] })
+        .catch(err => console.error('Failed to send request to staff channel:', err));
 }
 
 module.exports = {
