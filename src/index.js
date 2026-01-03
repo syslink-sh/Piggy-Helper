@@ -11,7 +11,13 @@ if (!config.isValid()) {
 
 config.logStatus();
 
-const client = new Client({ intents: [GatewayIntentBits.Guilds] });
+const client = new Client({
+    intents: [
+        GatewayIntentBits.Guilds,
+        GatewayIntentBits.GuildMessages,
+        GatewayIntentBits.MessageContent
+    ]
+});
 client.commands = new Collection();
 client.helperAvailability = new Map();
 

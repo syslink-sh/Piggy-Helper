@@ -28,6 +28,9 @@ module.exports = {
     // Role IDs
     helperRoleId: (process.env.HELPER_ROLE_ID || '').trim(),
 
+    // Database Configuration
+    postgresUrl: (process.env.POSTGRES_URL || '').trim(),
+
 
     /**
      * Helper to validate that all required variables are present.
