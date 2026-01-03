@@ -120,10 +120,9 @@ async function handleRequestHelp(interaction) {
  * Logic for when a helper accepts a request.
  */
 async function handleAcceptRequest(interaction) {
+    await interaction.deferUpdate().catch(() => null);
     const embed = interaction.message.embeds[0];
     if (embed.title !== 'New Help Request') return;
-
-    await interaction.deferUpdate().catch(() => null);
     const requesterId = embed.footer.text.replace('User ID: ', '');
     const requester = await interaction.guild.members.fetch(requesterId).catch(() => null);
     const username = requester ? requester.user.username : 'unknown';
@@ -192,10 +191,9 @@ async function handleAcceptRequest(interaction) {
  * Logic for when a helper denies a request.
  */
 async function handleDenyRequest(interaction) {
+    await interaction.deferUpdate().catch(() => null);
     const embed = interaction.message.embeds[0];
     if (embed.title !== 'New Help Request') return;
-
-    await interaction.deferUpdate().catch(() => null);
     const helperDisplay = `${interaction.user.globalName || interaction.user.username} (${interaction.user.username})`;
     const deniedEmbed = EmbedBuilder.from(embed)
         .setColor('Red')
@@ -225,6 +223,7 @@ async function handleDenyRequest(interaction) {
  * Logic for when a request is submitted via modal.
  */
 async function handleSubmitRequest(interaction) {
+    await interaction.deferReply({ flags: [MessageFlags.Ephemeral] }).catch(() => null);
     const piggySkin = interaction.fields.getTextInputValue('piggy_skin');
     const robloxUser = interaction.fields.getTextInputValue('roblox_username');
     const notes = interaction.fields.getTextInputValue('additional_notes') || 'None';
@@ -291,6 +290,7 @@ module.exports = {
                 else if (customId === 'accept_request') await handleAcceptRequest(interaction);
                 else if (customId === 'deny_request') await handleDenyRequest(interaction);
                 else if (customId === 'confirm_close') {
+                    await interaction.deferUpdate().catch(() => null);
                     const channel = interaction.channel;
                     let requester = null;
                     let helper = null;
@@ -305,13 +305,11 @@ module.exports = {
                     }
 
                     if (interaction.user.id !== requester && interaction.user.id !== helper) {
-                        return safeReply(interaction, {
+                        return interaction.followUp({
                             content: 'Only the Requester or Helper can confirm closing this ticket.',
                             flags: [MessageFlags.Ephemeral]
                         });
                     }
-
-                    await interaction.deferUpdate().catch(() => null);
 
                     // Update the request in the database to 'closed'
                     if (requester) {

@@ -6,10 +6,11 @@ module.exports = {
         .setName('toggleavailable')
         .setDescription('Toggles your availability as a helper.'),
     async execute(interaction) {
+        await interaction.deferReply({ flags: [MessageFlags.Ephemeral] }).catch(() => null);
+
         if (!config.helperRoleId || !interaction.member.roles.cache.has(config.helperRoleId)) {
-            return interaction.reply({
-                content: 'You do not have the required role to use this command.',
-                flags: [MessageFlags.Ephemeral]
+            return interaction.editReply({
+                content: 'You do not have the required role to use this command.'
             });
         }
 
@@ -19,9 +20,8 @@ module.exports = {
         interaction.client.helperAvailability.set(userId, newStatus);
 
         const status = newStatus ? 'available' : 'unavailable';
-        await interaction.reply({
-            content: `You are now **${status}**.`,
-            flags: [MessageFlags.Ephemeral]
+        await interaction.editReply({
+            content: `You are now **${status}**.`
         });
     },
 };

@@ -5,9 +5,10 @@ module.exports = {
         .setName('closerequest')
         .setDescription('Closes the current help request ticket.'),
     async execute(interaction) {
+        await interaction.deferReply({ flags: [MessageFlags.Ephemeral] }).catch(() => null);
 
         if (!interaction.channel.name.startsWith('helprequest-')) {
-            return interaction.reply({ content: 'This command can only be used in help request channels.', flags: [MessageFlags.Ephemeral] });
+            return interaction.editReply({ content: 'This command can only be used in help request channels.' });
         }
 
 
@@ -24,7 +25,7 @@ module.exports = {
         }
 
         if (interaction.user.id !== requester && interaction.user.id !== helper) {
-            return interaction.reply({ content: 'You are not authorized to close this request.', flags: [MessageFlags.Ephemeral] });
+            return interaction.editReply({ content: 'You are not authorized to close this request.' });
         }
 
         const confirmButton = new ButtonBuilder()
@@ -34,6 +35,6 @@ module.exports = {
 
         const row = new ActionRowBuilder().addComponents(confirmButton);
 
-        await interaction.reply({ content: 'Are you sure you want to close this help request?', components: [row], flags: [MessageFlags.Ephemeral] });
+        await interaction.editReply({ content: 'Are you sure you want to close this help request?', components: [row] });
     },
 };

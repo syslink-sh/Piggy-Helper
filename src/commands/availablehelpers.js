@@ -5,11 +5,13 @@ module.exports = {
         .setName('availablehelpers')
         .setDescription('Shows a list of currently available helpers.'),
     async execute(interaction) {
+        await interaction.deferReply({ flags: [MessageFlags.Ephemeral] }).catch(() => null);
+
         const availableHelpers = Array.from(interaction.client.helperAvailability.entries())
             .filter(([id, status]) => status === true);
 
         if (availableHelpers.length === 0) {
-            return interaction.reply({ content: 'No helpers are currently available.', flags: [MessageFlags.Ephemeral] });
+            return interaction.editReply({ content: 'No helpers are currently available.' });
         }
 
         const embed = new EmbedBuilder()
@@ -32,6 +34,6 @@ module.exports = {
 
         embed.setDescription(helperList || 'No helpers are currently available.');
 
-        await interaction.reply({ embeds: [embed] });
+        await interaction.editReply({ embeds: [embed] });
     },
 };
